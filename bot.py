@@ -8,6 +8,7 @@ import ipaddress
 import time
 import json
 import base64
+import html
 from io import BytesIO
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urljoin
@@ -137,12 +138,9 @@ async def get_domain_age(domain):
             creation_date = creation_date[0]
             
         if isinstance(creation_date, datetime): 
-            # Timezone (Zaman Dilimi) uyumsuzluklarından dolayı programın çökmesini engelle
             safe_creation = creation_date.replace(tzinfo=None)
             safe_now = datetime.now().replace(tzinfo=None)
             age = (safe_now - safe_creation).days
-            
-            # Bazı sunucular saati yanlış verebilir, negatif yaş olmasını engelle
             if age < 0: age = 0 
             return age, None
             
@@ -191,7 +189,7 @@ async def check_virustotal(url):
         except: return False, "Sorgu Hatası"
 
 async def check_ssl_cert(domain):
-    if is_ip_address(domain): return None, "IP adresleri için SSL analizi atlandı."
+    if is_ip_address(domain): return None, "IP adresleri için SSL atlandı."
     loop = asyncio.get_event_loop()
     try:
         context = ssl.create_default_context()
@@ -210,6 +208,10 @@ async def check_ssl_cert(domain):
     except Exception:
         return None, "Geçersiz veya Yok."
 
+def get_favicon_hash(favicon_bytes):
+    try: return str(mmh3.hash(base64.b64encode(favicon_bytes)))
+    except: return None
+
 async def capture_screenshot_and_analyze(url, root_domain):
     global browser_instance
     if not browser_instance: return None, None, 0, None, None, "Tarayıcı motoru hazır değil."
@@ -217,13 +219,44 @@ async def capture_screenshot_and_analyze(url, root_domain):
     try:
         context = await browser_instance.new_context(viewport={'width': 1280, 'height': 720})
         page = await context.new_page()
+        
+        # SSRF / DNS Rebinding Koruması
+        async def route_interceptor(route):
+            req_url = route.request.url.lower()
+            forbidden = ["127.0.0.1", "localhost", "169.254.", "10.", "192.168.", "172.16.", "file://", "::1"]
+            if any(f in req_url for f in forbidden):
+                logging.warning(f"SSRF Engellendi: {req_url}")
+                await route.abort()
+            else:
+                await route.continue_()
+                
+        await page.route("**/*", route_interceptor)
+        
         await page.goto(url, timeout=12000, wait_until="domcontentloaded")
         title = await page.title()
         screenshot_bytes = await page.screenshot(type="jpeg", quality=80)
+        
+        favicon_hash = None
+        favicon_url = None
+        links = await page.locator("link[rel~='icon']").all()
+        if links:
+            favicon_url = await links[0].get_attribute("href")
+            if favicon_url and not favicon_url.startswith("http"):
+                favicon_url = urljoin(url, favicon_url)
+        if not favicon_url: favicon_url = urljoin(url, "/favicon.ico")
+            
+        if favicon_url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(favicon_url, timeout=3) as fav_resp:
+                        if fav_resp.status == 200:
+                            favicon_hash = get_favicon_hash(await fav_resp.read())
+            except: pass
+
         password_inputs = await page.locator("input[type='password']").count()
         inner_text = await page.evaluate("() => document.body.innerText")
         if inner_text: inner_text = " ".join(inner_text.split())[:1500]
-        return screenshot_bytes, title, password_inputs, inner_text, None, None
+        return screenshot_bytes, title, password_inputs, inner_text, favicon_hash, None
     except Exception as e:
         return None, None, 0, None, None, f"Sayfa analiz hatası: {str(e)[:50]}"
     finally:
@@ -305,7 +338,7 @@ async def process_callback(callback_query: CallbackQuery):
         await callback_query.message.reply(f"{'✅ Başarılı' if success else '❌ Başarısız'}\n{msg}")
     elif action == "safe":
         await callback_query.answer("URL Güvenli işaretlendi.")
-        await callback_query.message.reply(f"✅ <code>{report_data['url']}</code> veri tabanına güvenli olarak kaydedildi.", parse_mode=ParseMode.HTML)
+        await callback_query.message.reply(f"✅ <code>{html.escape(report_data['url'])}</code> veri tabanına güvenli olarak kaydedildi.", parse_mode=ParseMode.HTML)
 
 @dp.message(F.text)
 async def analyze_message(message: types.Message):
@@ -323,16 +356,20 @@ async def analyze_message(message: types.Message):
         if len(original_url) > MAX_URL_LENGTH: continue
         if not original_url.startswith(('http://', 'https://')): original_url = 'http://' + original_url
         
+        safe_original_url = html.escape(original_url)
+        
         if any(original_url.lower().endswith(ext) for ext in MALICIOUS_EXTENSIONS):
-            await message.answer(f"🛑 <b>ZARARLI DOSYA</b>\nLink zararlı bir dosyaya ait!\n<code>{original_url}</code>", parse_mode=ParseMode.HTML)
+            await message.answer(f"🛑 <b>ZARARLI DOSYA</b>\nLink zararlı bir dosyaya ait!\n<code>{safe_original_url}</code>", parse_mode=ParseMode.HTML)
             continue
             
-        status_msg = await message.answer(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\n<code>{original_url[:50]}...</code>", parse_mode=ParseMode.HTML)
+        status_msg = await message.answer(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\n<code>{safe_original_url[:50]}...</code>", parse_mode=ParseMode.HTML)
         
         try:
             url, is_redirected = await unshorten_url(original_url)
+            safe_url = html.escape(url)
+            
             if url in USOM_LIST or urlparse(url).netloc in USOM_LIST:
-                await status_msg.edit_text(f"🔴 <b>USOM ENGELLEMESİ</b>\nZararlı adres!\n<code>{url}</code>", parse_mode=ParseMode.HTML)
+                await status_msg.edit_text(f"🔴 <b>USOM ENGELLEMESİ</b>\nZararlı adres!\n<code>{safe_url}</code>", parse_mode=ParseMode.HTML)
                 continue
                 
             ext = await safe_tld_extract(url)
@@ -346,7 +383,7 @@ async def analyze_message(message: types.Message):
 
             is_whitelisted = root_domain in SAFE_DOMAINS or full_domain in SAFE_DOMAINS
             
-            await status_msg.edit_text(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\nHedef: <code>{original_url[:50]}...</code>\n\n[⚙️] Ekran görüntüsü ve veriler paralel olarak toplanıyor...", parse_mode=ParseMode.HTML)
+            await status_msg.edit_text(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\nHedef: <code>{safe_original_url[:50]}...</code>\n\n[⚙️] Ekran görüntüsü ve veriler paralel olarak toplanıyor...", parse_mode=ParseMode.HTML)
             
             whois_task = asyncio.create_task(get_domain_age(root_domain))
             sb_task = asyncio.create_task(check_safe_browsing(url))
@@ -358,7 +395,7 @@ async def analyze_message(message: types.Message):
             sb_res, sb_msg = await sb_task
             vt_res, vt_msg = await vt_task
             ssl_age, ssl_err = await ssl_task
-            screenshot_bytes, page_title, password_inputs, inner_text, _, screen_err = await screen_task
+            screenshot_bytes, page_title, password_inputs, inner_text, favicon_hash, screen_err = await screen_task
 
             risk_points = 0
             is_critical = False
@@ -383,19 +420,19 @@ async def analyze_message(message: types.Message):
                         is_critical = True; reasons.append(f"🔴 Subdomain Spoofing: '{brand}'"); risk_points += 80
 
                 if sb_res: is_critical = True; reasons.append(f"🔴 Google Safe Browsing: Zararlı İşaretlenmiş"); risk_points += 100
-                if vt_res: is_critical = True; reasons.append(f"🔴 VirusTotal: {vt_msg}"); risk_points += 100
+                if vt_res: is_critical = True; reasons.append(f"🔴 VirusTotal: {html.escape(vt_msg)}"); risk_points += 100
                 
                 if age_days is not None:
                     if age_days < 14: reasons.append(f"🔴 Domain çok yeni ({age_days} gün)."); risk_points += 40
                     elif age_days < 90: reasons.append(f"🟡 Domain yeni ({age_days} gün)."); risk_points += 20
                 else:
-                    if not is_ip_address(ext.domain): reasons.append(f"🟡 Domain Yaşı Gizli veya Hatası: {age_err}"); risk_points += 10
+                    if not is_ip_address(ext.domain): reasons.append(f"🟡 Domain Yaşı Gizli veya Hatası: {html.escape(str(age_err))}"); risk_points += 10
 
                 if ssl_age is not None:
                     if ssl_age < 14: reasons.append(f"🔴 SSL çok yeni ({ssl_age} gün). Anlık alınmış olabilir."); risk_points += 40
                     elif ssl_age < 60: reasons.append(f"🟡 SSL yeni ({ssl_age} gün)."); risk_points += 20
                 else:
-                    if not is_ip_address(ext.domain): reasons.append(f"🔴 SSL Sertifikası Yok / Geçersiz: {ssl_err}"); risk_points += 30
+                    if not is_ip_address(ext.domain): reasons.append(f"🔴 SSL Sertifikası Yok / Geçersiz: {html.escape(str(ssl_err))}"); risk_points += 30
 
                 if screenshot_bytes:
                     ocr_text = await perform_ocr(screenshot_bytes)
@@ -431,7 +468,7 @@ async def analyze_message(message: types.Message):
             }
 
             report = f"🛡️ <b>MetinGuard v6.1 Analiz Raporu</b>\n"
-            report += f"🌐 Hedef: <code>{url[:50]}</code>\n"
+            report += f"🌐 Hedef: <code>{safe_url[:50]}</code>\n"
             report += f"📊 Risk Skoru: <b>% {risk_points}</b>\n"
             report += f"{header}\n\n"
             
@@ -444,7 +481,7 @@ async def analyze_message(message: types.Message):
             if not reasons: report += "• Herhangi bir risk tespit edilmedi.\n"
             for r in reasons: report += f"• {r}\n"
                 
-            report += f"\n🤖 <b>AI Analizi:</b>\n<i>{ai_comment}</i>\n"
+            report += f"\n🤖 <b>AI Analizi:</b>\n<i>{html.escape(ai_comment)}</i>\n"
 
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🚨 OTOMATİK İHBAR ET (USOM)", callback_data=f"report_{report_id}")],
@@ -459,7 +496,7 @@ async def analyze_message(message: types.Message):
                 await status_msg.edit_text(report, reply_markup=keyboard, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
         except Exception as e:
-            await status_msg.edit_text(f"❌ MetinGuard Analiz Hatası: {str(e)[:50]}", parse_mode=ParseMode.HTML)
+            await status_msg.edit_text(f"❌ MetinGuard Analiz Hatası: {html.escape(str(e))[:50]}", parse_mode=ParseMode.HTML)
 
 async def main():
     if not BOT_TOKEN: return
