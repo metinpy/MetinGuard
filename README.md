@@ -8,88 +8,88 @@
 </div>
 <br>
 
-**MetinGuard**, gelişmiş yapay zeka ve siber tehdit istihbaratı araçlarını bir araya getiren, Türkiye e-ticaret siteleri odaklı ve otonom bir **Telegram Siber Güvenlik Botudur.** 
+**MetinGuard** is an autonomous **Telegram Cyber Security Bot** that integrates advanced artificial intelligence and cyber threat intelligence tools, primarily focusing on protecting e-commerce platforms and users against phishing and malware distribution.
 
-Kullanıcıların gönderdiği şüpheli web sitelerini güvenli bir sanal ortamda (Sandbox) tarar, bulguları yapay zeka ile analiz eder ve tespit edilen dolandırıcılık/oltalama sayfalarını otomatik olarak **USOM'a** ve ilgili barındırma (hosting) firmasına ihbar eder.
-
----
-
-## 🌟 Öne Çıkan Özellikler
-
-### 🧠 Yapay Zeka Destekli İçerik Analizi (Gemini 1.5)
-Sitenin kaynak kodlarındaki metinleri okuyarak "Sosyal Mühendislik" taktiklerini tespit eder. Sitenin aciliyet hissi yaratıp yaratmadığını veya sahte ödül/kampanya vaat edip etmediğini algılayarak Türkçe profesyonel bir özet çıkarır.
-
-### 📸 Kalıcı (Persistent) Sanal Tarayıcı Engine
-Performans kaybını önlemek için tek seferlik başlatılan **Playwright Chromium** motoru ile arka planda başsız (headless) olarak siteye girer. 
-- Canlı ekran görüntüsü alır.
-- Şifre giriş kutularını (`<input type="password">`) tespit eder.
-
-### 👁️ Görüntü İşleme (OCR) Marka Tespiti
-Oltalama siteleri genelde logoları HTML metni yerine "Görsel (PNG/JPG)" olarak gizler. **Tesseract OCR** entegrasyonu sayesinde ekran görüntüsündeki logolar okunur. Domain adresinde bulunmayan ama resimde yer alan kurum isimleri anında "Görsel Marka İhlali" olarak kırmızı bayrakla işaretlenir.
-
-### 🇹🇷 Türkiye E-Ticaret Beyaz Listesi (Whitelist)
-Yanlış alarmları (False-Positive) önlemek adına Türkiye'nin önde gelen pazar yeri ve sosyal medya uygulamaları (sahibinden, letgo, trendyol vb.) özel koruma ve beyaz liste altındadır. Orijinal sitelerde gereksiz işlemler (Whois, VT taraması) atlanarak maksimum performans sağlanır.
-
-### ✉️ Otonom "Takedown" (İhbar) Sistemi
-Zararlı tespit edilen bir sitenin barındırıcısı Whois kayıtlarından (abuse email) çekilir. Bot üzerindeki **🚨 OTOMATİK İHBAR ET** butonuna basıldığında:
-1. **USOM (ihbar@usom.gov.tr):** AI tarafından yazılmış resmi Türkçe ihbar dilekçesi.
-2. **Hosting Firması (Abuse):** AI tarafından yazılmış İngilizce DMCA / Phishing Takedown ihbarı, ekran görüntüsü kanıtıyla birlikte otomatik yollanır.
-
-### 🛡️ Diğer Zırh Katmanları
-- **SSRF Koruması:** Botun iç ağa (localhost/127.0.0.1) yönlendirilmesini engeller.
-- **Typosquatting:** Levenshtein mesafesi ile "g00gle.com" gibi sahte domainleri tanır.
-- **Threat Intel:** VirusTotal ve Google Safe Browsing API ile eşzamanlı sorgu yapar.
-- **Domain & SSL Yaşı:** Timezone senkronizasyonlu Whois ve SSL sertifika yaşı analizi.
+It analyzes suspicious websites sent by users in a secure virtual sandbox, evaluates the findings using AI, and automatically reports detected phishing/fraud pages to the national response center (**USOM**) and the relevant hosting provider via automated abuse emails.
 
 ---
 
-## 🚀 Kurulum Adımları
+## 🌟 Key Features
 
-**1. Depoyu Klonlayın:**
+### 🧠 AI-Powered Social Engineering Analysis (Gemini 1.5)
+By analyzing the source code and visible text of the website, it detects "Social Engineering" tactics. It identifies if the site creates a false sense of urgency or promises fake rewards/giveaways, generating a concise professional summary of the threat.
+
+### 📸 Persistent Virtual Browser Engine
+To prevent performance degradation, it utilizes a single-instance **Playwright Chromium** engine running headless in the background. For each request, it:
+- Captures a live screenshot of the target site.
+- Detects hidden credential-harvesting elements (e.g., `<input type="password">`).
+
+### 👁️ Computer Vision (OCR) Brand Impersonation Detection
+Phishing sites often hide logos as images (PNG/JPG) rather than HTML text to bypass traditional scrapers. Thanks to **Tesseract OCR** integration, logos inside the screenshot are extracted and read. If a recognized institution's name appears in the image but doesn't match the domain, it immediately raises a "Visual Brand Impersonation" red flag.
+
+### 🇹🇷 E-Commerce Whitelisting (False-Positive Prevention)
+To prevent false alarms, major e-commerce and social media applications in Turkey (e.g., sahibinden, letgo, trendyol) are placed under a special whitelist protection. For these verified domains, heavy operations (Whois, VirusTotal scans) are bypassed to ensure maximum performance and zero false positives.
+
+### ✉️ Autonomous Takedown System
+When a malicious site is detected, the bot automatically extracts the hosting provider's abuse contact from Whois records. Upon pressing the **🚨 OTOMATİK İHBAR ET (REPORT ABUSE)** button on the bot:
+1. **USOM (National Cyber Incident Response Center):** Sends an official incident report drafted by AI in Turkish.
+2. **Hosting Provider (Abuse):** Sends an English DMCA / Phishing Takedown request, drafted by AI, along with the captured screenshot as irrefutable evidence.
+
+### 🛡️ Additional Armor Layers
+- **SSRF Protection:** Prevents the bot from being redirected to internal networks (localhost/127.0.0.1).
+- **Typosquatting Detection:** Identifies fake domains like "g00gle.com" using the Levenshtein distance algorithm.
+- **Threat Intel Integration:** Performs concurrent queries via VirusTotal and Google Safe Browsing APIs.
+- **Domain & SSL Age Analysis:** Calculates the precise age of the domain and SSL certificate, mitigating timezone mismatches and exposing newly registered fraudulent domains.
+
+---
+
+## 🚀 Installation
+
+**1. Clone the Repository:**
 ```bash
 git clone https://github.com/metinpy/MetinGuard.git
 cd MetinGuard
 ```
 
-**2. Gerekli Kütüphaneleri Yükleyin:**
+**2. Install Dependencies:**
 ```bash
 pip install -r requirements.txt
 playwright install chromium
 ```
-*(Not: Windows'ta OCR özelliğinin çalışması için [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) yüklü olmalı ve kod içindeki `tesseract_cmd` yolu sisteminize uygun ayarlanmalıdır.)*
+*(Note: For the OCR feature to work on Windows, [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) must be installed, and the `tesseract_cmd` path in the code must match your system.)*
 
-**3. Ortam Değişkenlerini Ayarlayın:**
-Proje dizininde `.env` isimli bir dosya oluşturup API şifrelerinizi girin:
+**3. Set Environment Variables:**
+Create a `.env` file in the project directory and insert your API keys:
 ```env
-BOT_TOKEN=telegram_bot_tokeniniz
-GOOGLE_SAFE_BROWSING_API_KEY=google_api_keyiniz
-VIRUSTOTAL_API_KEY=virustotal_api_keyiniz
-GEMINI_API_KEY=gemini_api_keyiniz
-SENDER_EMAIL=ihbar_gönderecek_gmail_adresiniz
-SENDER_PASSWORD=gmail_uygulama_sifreniz
+BOT_TOKEN=your_telegram_bot_token
+GOOGLE_SAFE_BROWSING_API_KEY=your_google_api_key
+VIRUSTOTAL_API_KEY=your_virustotal_api_key
+GEMINI_API_KEY=your_gemini_api_key
+SENDER_EMAIL=your_sender_gmail_address
+SENDER_PASSWORD=your_gmail_app_password
 ```
 
-**4. Botu Başlatın:**
+**4. Run the Bot:**
 ```bash
 python bot.py
 ```
 
 ---
 
-## 🛠️ Teknoloji Yığını (Stack)
+## 🛠️ Technology Stack
 - **Core:** Python 3.8+, Asyncio
-- **Bot Altyapısı:** Aiogram 3.x
+- **Bot Framework:** Aiogram 3.x
 - **Browser Automation:** Playwright Async
-- **Yapay Zeka:** Google Generative AI (Gemini Flash)
+- **Artificial Intelligence:** Google Generative AI (Gemini Flash)
 - **Computer Vision:** PyTesseract, Pillow
-- **Ağ ve Güvenlik:** Aiohttp, Python-Whois, Tldextract, SSL, Mmh3
+- **Network & Security:** Aiohttp, Python-Whois, Tldextract, SSL, Mmh3
 
 ---
 
-## ⚠️ Yasal Uyarı
-Bu proje, siber güvenlik araştırmaları ve topluluk yararı amacıyla geliştirilmiştir. Geliştirici, kodun yasa dışı amaçlarla veya kötü niyetli kullanımından doğacak hiçbir yasal sorumluluğu kabul etmez.
+## ⚠️ Disclaimer
+This project is developed solely for cybersecurity research and community benefit. The developer accepts no legal responsibility for any illegal or malicious use of this software.
 
 <br>
 <p align="center">
-  <i>Geliştirici: <b>metin.py</b></i> 🇹🇷
+  <i>Developer: <b>metin.py</b></i> 🇹🇷
 </p>
