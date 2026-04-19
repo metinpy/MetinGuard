@@ -37,7 +37,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("metinguard_security.log", encoding='utf-8'),
+        logging.FileHandler("cybereye_security.log", encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -190,7 +190,7 @@ async def get_abuse_email(domain):
 async def check_safe_browsing(url):
     if not GOOGLE_SAFE_BROWSING_API_KEY: return False, "Key Yok"
     api_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={GOOGLE_SAFE_BROWSING_API_KEY}"
-    payload = {"client": {"clientId": "metinguard", "clientVersion": "6.0"}, "threatInfo": {"threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"], "platformTypes": ["ANY_PLATFORM"], "threatEntryTypes": ["URL"], "threatEntries": [{"url": url}]}}
+    payload = {"client": {"clientId": "cybereye", "clientVersion": "6.0"}, "threatInfo": {"threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"], "platformTypes": ["ANY_PLATFORM"], "threatEntryTypes": ["URL"], "threatEntries": [{"url": url}]}}
     async with aiohttp.ClientSession() as session:
         try:
             async with session.post(api_url, json=payload, timeout=4) as resp:
@@ -373,7 +373,7 @@ async def send_abuse_email(target_url, report_data, screenshot_bytes):
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "🛡️ <b>MetinGuard v6.1 The Total Fortress</b>\n\n"
+        "🛡️ <b>CyberEye v6.1 The Total Fortress</b>\n\n"
         "<i>Bu bot <b>metin.py</b> tarafından kamu yararına geliştirilmiştir.</i> 🇹🇷\n\n"
         "Siber dolandırıcılık ve oltalama (phishing) sitelerini tespit etmek için bana sadece bir link gönderin. Türkiye e-ticaret, sosyal medya ve devlet siteleri tam koruma altındadır.", 
         parse_mode=ParseMode.HTML
@@ -415,7 +415,7 @@ async def analyze_message(message: types.Message):
             await message.answer(f"🛑 <b>ZARARLI DOSYA</b>\nLink zararlı bir dosyaya ait!\n<code>{safe_original_url}</code>", parse_mode=ParseMode.HTML)
             continue
             
-        status_msg = await message.answer(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\n<code>{safe_original_url[:50]}...</code>", parse_mode=ParseMode.HTML)
+        status_msg = await message.answer(f"🛡️ <b>CyberEye v6.1 Analizi</b>\n<code>{safe_original_url[:50]}...</code>", parse_mode=ParseMode.HTML)
         
         try:
             # Semaphore kilidi ile aynı anda aşırı işlem (thread) yapılmasını engelle
@@ -438,7 +438,7 @@ async def analyze_message(message: types.Message):
 
                 is_whitelisted = root_domain in SAFE_DOMAINS or full_domain in SAFE_DOMAINS
                 
-                await status_msg.edit_text(f"🛡️ <b>MetinGuard v6.1 Analizi</b>\nHedef: <code>{safe_original_url[:50]}...</code>\n\n[⚙️] Ekran görüntüsü ve veriler paralel olarak toplanıyor...", parse_mode=ParseMode.HTML)
+                await status_msg.edit_text(f"🛡️ <b>CyberEye v6.1 Analizi</b>\nHedef: <code>{safe_original_url[:50]}...</code>\n\n[⚙️] Ekran görüntüsü ve veriler paralel olarak toplanıyor...", parse_mode=ParseMode.HTML)
                 
                 whois_task = asyncio.create_task(get_domain_age(root_domain))
                 sb_task = asyncio.create_task(check_safe_browsing(url))
@@ -522,7 +522,7 @@ async def analyze_message(message: types.Message):
                     "ai_comment": ai_comment, "screenshot": screenshot_bytes
                 }
 
-                report = f"🛡️ <b>MetinGuard v6.1 Analiz Raporu</b>\n"
+                report = f"🛡️ <b>CyberEye v6.1 Analiz Raporu</b>\n"
                 report += f"🌐 Hedef: <code>{safe_url[:50]}</code>\n"
                 report += f"📊 Risk Skoru: <b>% {risk_points}</b>\n"
                 report += f"{header}\n\n"
@@ -552,7 +552,7 @@ async def analyze_message(message: types.Message):
 
         except Exception as e:
             logging.error(f"Mesaj Analiz Hatası: {e}")
-            await status_msg.edit_text(f"❌ MetinGuard Analiz Hatası: {html.escape(str(e))[:50]}", parse_mode=ParseMode.HTML)
+            await status_msg.edit_text(f"❌ CyberEye Analiz Hatası: {html.escape(str(e))[:50]}", parse_mode=ParseMode.HTML)
 
 async def main():
     if not BOT_TOKEN: 
@@ -561,7 +561,7 @@ async def main():
     if not GOOGLE_SAFE_BROWSING_API_KEY or not VIRUSTOTAL_API_KEY:
         logging.warning("UYARI: Güvenlik API anahtarları eksik. Tespit gücü düşecek.")
         
-    logging.info("MetinGuard v6.1 Fortress Başlatılıyor...")
+    logging.info("CyberEye v6.1 Fortress Başlatılıyor...")
     await fetch_usom_list()
     await setup_playwright()
     

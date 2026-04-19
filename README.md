@@ -1,4 +1,4 @@
-# 🛡️ MetinGuard v6.1 - The Total Fortress
+# 🛡️ CyberEye v6.1 - The Total Fortress
 
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3.8+-blue.svg?logo=python&logoColor=white" alt="Python Version"/>
@@ -8,7 +8,7 @@
 </div>
 <br>
 
-**MetinGuard** is an autonomous **Telegram Cyber Security Bot** that integrates advanced artificial intelligence and cyber threat intelligence tools, primarily focusing on protecting e-commerce platforms and users against phishing and malware distribution.
+**CyberEye** is an autonomous **Telegram Cyber Security Bot** that integrates advanced artificial intelligence and cyber threat intelligence tools, primarily focusing on protecting e-commerce platforms and users against phishing and malware distribution.
 
 It analyzes suspicious websites sent by users in a secure virtual sandbox, evaluates the findings using AI, and automatically reports detected phishing/fraud pages to the national response center (**USOM**) and the relevant hosting provider via automated abuse emails.
 
@@ -47,8 +47,8 @@ When a malicious site is detected, the bot automatically extracts the hosting pr
 
 **1. Clone the Repository:**
 ```bash
-git clone https://github.com/metinpy/MetinGuard.git
-cd MetinGuard
+git clone https://github.com/metinpy/CyberEye.git
+cd CyberEye
 ```
 
 **2. Install Dependencies:**
